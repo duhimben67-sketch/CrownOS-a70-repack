@@ -1,26 +1,41 @@
-import os, sys, requests
+import os
+import requests
 
-repo = os.environ["REPO"]
-token = os.environ["TOKEN"]
+TOKEN = os.environ['GITHUB_TOKEN']
+REPO = "duhimben67-sketch/CrownOS-a70-repack"
 
-api = f"https://api.github.com/repos/{repo}/releases/latest"
-h = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+api = f"https://api.github.com/repos/{REPO}/releases/latest"
+headers = {
+    "Authorization": f"token {TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
 
-r = requests.get(api, headers=h)
+print("📥 Fetching latest release...")
+
+r = requests.get(api, headers=headers)
 if r.status_code != 200:
-    print("No release found. Upload lineage-base.zip to a release.")
-    sys.exit(1)
+    print("❌ Could not fetch release info.")
+    print(r.text)
+    exit(1)
 
-asset = None
-for a in r.json().get("assets", []):
-    if a["name"] == "lineage-base.zip":
-        asset = a
+data = r.json()
+assets = data.get("assets", [])
+
+base_zip = None
+for a in assets:
+    if "lineage-base.zip" in a["name"]:
+        base_zip = a
         break
 
-if asset is None:
-    print("lineage-base.zip not found in latest release.")
-    sys.exit(1)
+if not base_zip:
+    print("❌ lineage-base.zip not found in release.")
+    exit(1)
 
-dl = requests.get(asset["url"], headers={**h, "Accept": "application/octet-stream"})
-open("lineage-base.zip", "wb").write(dl.content)
-print("Downloaded lineage-base.zip")
+url = base_zip["browser_download_url"]
+print(f"Downloading {url}")
+
+file = "base.zip"
+with open(file, "wb") as f:
+    f.write(requests.get(url).content)
+
+print("✅ base.zip downloaded.")
