@@ -1,7 +1,16 @@
 import os
+import sys
 import requests
 
-TOKEN = os.environ['GITHUB_TOKEN']
+# Output path from command-line argument
+# Example: workdir/lineage-base.zip
+if len(sys.argv) != 2:
+    print("Usage: python3 download_base.py <output_path>")
+    exit(1)
+
+output_path = sys.argv[1]
+
+TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = "duhimben67-sketch/CrownOS-a70-repack"
 
 api = f"https://api.github.com/repos/{REPO}/releases/latest"
@@ -32,10 +41,12 @@ if not base_zip:
     exit(1)
 
 url = base_zip["browser_download_url"]
-print(f"Downloading {url}")
+print(f"⬇️ Downloading {url}")
 
-file = "base.zip"
-with open(file, "wb") as f:
+# Ensure directory exists
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+with open(output_path, "wb") as f:
     f.write(requests.get(url).content)
 
-print("✅ base.zip downloaded.")
+print(f"✅ Downloaded to {output_path}")
