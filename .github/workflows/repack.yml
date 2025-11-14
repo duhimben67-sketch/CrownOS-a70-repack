@@ -1,0 +1,43 @@
+name: Build CrownOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Install tools
+      run: |
+        sudo apt update
+        sudo apt install -y zip unzip rsync python3 python3-pip
+        pip3 install pillow requests
+
+    - name: Download base ROM from release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        python3 scripts/download_base.py
+
+    - name: Apply CrownOS tweaks
+      run: |
+        bash scripts/apply_tweaks.sh workdir
+
+    - name: Generate bootanimation
+      run: |
+        python3 scripts/generate_bootanimation.py
+
+    - name: Create final ZIP
+      run: |
+        cd workdir
+        zip -r ../CrownOS-A70.zip *
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: CrownOS-A70.zip
+        path: CrownOS-A70.zip
