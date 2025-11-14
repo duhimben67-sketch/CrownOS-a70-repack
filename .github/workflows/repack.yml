@@ -17,11 +17,14 @@ jobs:
         sudo apt install -y zip unzip rsync python3 python3-pip
         pip3 install pillow requests
 
+    - name: Create working directory
+      run: mkdir -p workdir
+
     - name: Download base ROM from release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        python3 scripts/download_base.py
+        python3 scripts/download_base.py workdir/lineage-base.zip
 
     - name: Apply CrownOS tweaks
       run: |
@@ -29,7 +32,7 @@ jobs:
 
     - name: Generate bootanimation
       run: |
-        python3 scripts/generate_bootanimation.py
+        python3 scripts/generate_bootanimation.py workdir
 
     - name: Create final ZIP
       run: |
