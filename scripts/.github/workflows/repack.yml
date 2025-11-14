@@ -1,0 +1,106 @@
+name: Repack CrownOS (LineageOS 20 base, A705FN)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repack:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install tools & python dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y zip unzip rsync python3-pip
+          pip3 install pillow requests
+
+      - name: Download base ROM from release asset
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PY'
+import os, sys, requests
+
+repo = os.environ["REPO"]
+token = os.environ["TOKEN"]
+
+api = f"https://api.github.com/repos/{repo}/releases/latest"
+h = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+
+r = requests.get(api, headers=h)
+if r.status_code != 200:
+    print("No release found. Upload lineage-base.zip to a release.")
+    sys.exit(1)
+
+asset = None
+for a in r.json().get("assets", []):
+    if a["name"] == "lineage-base.zip":
+        asset = a
+        break
+
+if asset is None:
+    print("lineage-base.zip not found in latest release.")
+    sys.exit(1)
+
+dl = requests.get(asset["url"], headers={**h, "Accept": "application/octet-stream"})
+open("lineage-base.zip", "wb").write(dl.content)
+print("Downloaded lineage-base.zip")
+PY
+
+      - name: Unpack base ROM
+        run: |
+          rm -rf work
+          mkdir -p work
+          unzip -q lineage-base.zip -d work
+
+      - name: Copy user modifications
+        run: |
+          if [ -d "modifications/system/app" ]; then
+            mkdir -p work/system/app
+            cp -r modifications/system/app/* work/system/app/
+          fi
+
+          if [ -d "modifications/system/fonts" ]; then
+            mkdir -p work/system/fonts
+            cp -r modifications/system/fonts/* work/system/fonts/
+          fi
+
+          if [ -f "modifications/media/bootanimation.zip" ]; then
+            mkdir -p work/system/media
+            cp modifications/media/bootanimation.zip work/system/media/
+          fi
+
+      - name: Generate bootanimation if missing
+        run: |
+          if [ ! -f "work/system/media/bootanimation.zip" ]; then
+            python3 scripts/generate_bootanimation.py work
+          fi
+
+      - name: Apply CrownOS tweaks
+        run: |
+          chmod +x scripts/apply_tweaks.sh
+          scripts/apply_tweaks.sh work
+
+      - name: Fix file permissions
+        run: |
+          find work -type d -exec chmod 755 {} \;
+          find work -type f -exec chmod 644 {} \;
+
+      - name: Repack CrownOS ZIP
+        run: |
+          mkdir -p output
+          cd work
+          zip -r9 ../output/CrownOS-A70-smooth.zip ./*
+          cd ..
+
+      - name: Upload ROM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CrownOS-A70-smooth
+          path: output/CrownOS-A70-smooth.zip
