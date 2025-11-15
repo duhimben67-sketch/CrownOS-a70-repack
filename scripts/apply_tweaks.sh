@@ -11,3 +11,4 @@ rm -rf "$workdir/system/app/Email"
 
 # Add any other edits here
 echo "Tweaks complete."
+echo "CrownOS tweaks applied successfully!"
